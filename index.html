@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>JANコード読み取り</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    button {
+      font-size: 18px;
+      padding: 10px 20px;
+    }
+    input {
+      font-size: 18px;
+      width: 100%;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>JANコード（978〜）読み取り</h2>
+
+<button id="scanBtn">カメラで読み取る</button>
+
+<p>読み取ったコード：</p>
+<input id="result" type="text" readonly>
+
+<script>
+  const resultInput = document.getElementById("result");
+  const scanBtn = document.getElementById("scanBtn");
+
+  scanBtn.onclick = async () => {
+    if (!("BarcodeDetector" in window)) {
+      alert("このブラウザはバーコード読み取りに対応していません");
+      return;
+    }
+
+    const detector = new BarcodeDetector({
+      formats: ["ean_13"]
+    });
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" }
+      });
+
+      const video = document.createElement("video");
+      video.srcObject = stream;
+      await video.play();
+
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      const scan = async () => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+
+        const barcodes = await detector.detect(canvas);
+        for (const barcode of barcodes) {
+          const value = barcode.rawValue;
+          if (/^978\d{10}$/.test(value)) {
+            resultInput.value = value;
+            stream.getTracks().forEach(t => t.stop());
+            return;
+          }
+        }
+        requestAnimationFrame(scan);
+      };
+
+      scan();
+    } catch (e) {
+      alert("カメラを起動できませんでした");
+    }
+  };
+</script>
+
+</body>
+</html>
